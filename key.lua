@@ -25,12 +25,12 @@ local Config = {
     DISCORD_INVITE_CODE = "BPRtwyESNn",
     
     -- Key Storage
-    KEY_STORAGE_FILE = "Warp_KeyData.json",
+    KEY_STORAGE_FILE = "voidkey.json",
 
     -- Main Settings
-    HubName = "Warp Hub",
+    HubName = "Void Hub",
     Subtitle = "Top Script Hub",
-    LogoLetter = "W",
+    LogoLetter = "V",
     ImageLogo = "", -- Paste your decal ID here. Leave blank for letter.
     LoadTime = 8,
 
