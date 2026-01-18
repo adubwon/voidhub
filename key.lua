@@ -1,11 +1,3 @@
---[[
-    Warp Hub - Key System Loader with Premium UI
-    Always shows verification UI
-]]
-
---================================================================================--
---[[ SERVICES ]]--
---================================================================================--
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
