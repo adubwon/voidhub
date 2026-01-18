@@ -1,5 +1,6 @@
 --[[
     Warp Hub - Key System Loader with Premium UI
+    Always shows verification UI
 ]]
 
 --================================================================================--
@@ -26,7 +27,7 @@ local Config = {
     KEY_STORAGE_FILE = "voidkey.json",
 
     -- Main Settings
-    HubName = "Warp Hub Premium",
+    HubName = "Void Hub",
     ScriptToLoad = "https://github.com/adubwon/nex/raw/refs/heads/main/hub.lua",
 
     -- UI Configuration
@@ -69,7 +70,8 @@ local function saveKeyData()
         writefile(Config.KEY_STORAGE_FILE, HttpService:JSONEncode({
             key_verified = true,
             user_id = player.UserId,
-            saved_key = Config.CORRECT_KEY
+            saved_key = Config.CORRECT_KEY,
+            timestamp = os.time()
         }))
     end)
 end
@@ -96,42 +98,14 @@ local function handleDiscordInvite()
         end
     end, function() end)
     
-    -- Try to open in Discord desktop app
-    xpcall(function()
-        request({
-            Url = "http://127.0.0.1:6463/rpc?v=1",
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json",
-                ["Origin"] = "https://discord.com"
-            },
-            Body = HttpService:JSONEncode({
-                cmd = "INVITE_BROWSER",
-                args = {code = Config.DISCORD_INVITE_CODE},
-                nonce = HttpService:GenerateGUID(false)
-            })
-        })
-    end, function() end)
-    
     -- Show notification
     notify("Discord Link Copied", "Paste in browser to join", 15)
 end
 
 --================================================================================--
---[[ CHECK IF KEY IS ALREADY VERIFIED ]]--
+--[[ CHECK IF KEY IS ALREADY VERIFIED - BUT STILL SHOW UI ]]--
 --================================================================================--
-if loadKeyData() then
-    -- Key is verified, load the hub directly
-    local success, result = pcall(function()
-        loadstring(game:HttpGet(Config.ScriptToLoad))()
-    end)
-    if success then
-        notify("Success", "Warp Hub loaded successfully!", 3)
-    else
-        notify("Error", tostring(result), 5)
-    end
-    return
-end
+local alreadyVerified = loadKeyData()
 
 --================================================================================--
 --[[ PREMIUM UI FUNCTIONS ]]--
@@ -304,8 +278,8 @@ local statusText = Instance.new("TextLabel")
 statusText.Size = UDim2.new(1, -40, 0, 30)
 statusText.Position = UDim2.new(0, 20, 0, topBarHeight + 180)
 statusText.BackgroundTransparency = 1
-statusText.Text = "Enter your key to access premium features"
-statusText.TextColor3 = Config.SubTextColor
+statusText.Text = alreadyVerified and "Key already verified! Click VERIFY to continue." or "Enter your key to access premium features"
+statusText.TextColor3 = alreadyVerified and Config.SuccessColor or Config.SubTextColor
 statusText.TextSize = 16
 statusText.Font = Enum.Font.GothamMedium
 statusText.TextXAlignment = Enum.TextXAlignment.Center
@@ -319,13 +293,13 @@ local keyInput = Instance.new("TextBox")
 keyInput.Size = UDim2.new(1, -20, 1, 0)
 keyInput.Position = UDim2.new(0, 10, 0, 0)
 keyInput.BackgroundTransparency = 1
-keyInput.PlaceholderText = "Enter your premium key..."
+keyInput.PlaceholderText = alreadyVerified and "Key already saved (click VERIFY)" or "Enter your premium key..."
 keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
 keyInput.TextColor3 = Config.TextColor
 keyInput.TextSize = 16
 keyInput.Font = Enum.Font.GothamMedium
 keyInput.ClearTextOnFocus = false
-keyInput.Text = ""
+keyInput.Text = alreadyVerified and Config.CORRECT_KEY or ""
 keyInput.Parent = keyInputContainer
 
 -- Buttons
@@ -344,10 +318,10 @@ buttonList.Parent = buttonContainer
 
 local verifyButton = Instance.new("TextButton")
 verifyButton.Size = UDim2.new(0.5, -6, 1, 0)
-verifyButton.BackgroundColor3 = Config.AccentColor
+verifyButton.BackgroundColor3 = alreadyVerified and Config.SuccessColor or Config.AccentColor
 verifyButton.BackgroundTransparency = 0.2
 verifyButton.AutoButtonColor = false
-verifyButton.Text = "VERIFY KEY"
+verifyButton.Text = alreadyVerified and "CONTINUE" or "VERIFY KEY"
 verifyButton.TextColor3 = Config.TextColor
 verifyButton.TextSize = 16
 verifyButton.Font = Enum.Font.GothamBold
@@ -432,7 +406,9 @@ local function closeUI()
     if ScreenGui then
         ScreenGui:Destroy()
     end
-    blur:Destroy()
+    if blur and blur.Parent then
+        blur:Destroy()
+    end
 end
 
 local function handleDragInput(input)
@@ -479,7 +455,7 @@ verifyButton.MouseLeave:Connect(function()
     if isClosing then return end
     TweenService:Create(verifyButton, TweenInfo.new(0.15), {
         BackgroundTransparency = 0.2,
-        BackgroundColor3 = Config.AccentColor,
+        BackgroundColor3 = alreadyVerified and Config.SuccessColor or Config.AccentColor,
         Size = UDim2.new(0.5, -6, 1, 0)
     }):Play()
 end)
@@ -617,6 +593,37 @@ local function startLoadingAnimation()
     return loadingContainer, loadingFill, loadingText
 end
 
+local function loadMainHub()
+    -- Start loading animation
+    local loadingContainer, loadingFill, loadingText = startLoadingAnimation()
+    
+    -- Load the hub
+    task.wait(1)
+    
+    local success, result = pcall(function()
+        loadstring(game:HttpGet(Config.ScriptToLoad))()
+    end)
+    
+    if success then
+        loadingText.Text = "Hub loaded successfully!"
+        task.wait(1)
+        
+        -- Close the key system UI
+        closeUI()
+    else
+        showError("Failed to load hub: " .. tostring(result))
+        -- Reset UI
+        TweenService:Create(keyInputContainer, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
+        TweenService:Create(keyInput, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+        TweenService:Create(verifyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
+        TweenService:Create(getKeyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
+        
+        if loadingContainer then
+            loadingContainer:Destroy()
+        end
+    end
+end
+
 verifyButton.MouseButton1Click:Connect(function()
     local key = keyInput.Text:gsub("%s+", "") -- Remove whitespace
     
@@ -625,39 +632,15 @@ verifyButton.MouseButton1Click:Connect(function()
         return
     end
     
-    if key == Config.CORRECT_KEY then
-        -- Save the key
-        saveKeyData()
+    if alreadyVerified or key == Config.CORRECT_KEY then
+        if not alreadyVerified then
+            -- Save the key if this is the first time verifying
+            saveKeyData()
+        end
         showSuccess("Key verified! Loading hub...")
         
-        -- Start loading animation
-        local loadingContainer, loadingFill, loadingText = startLoadingAnimation()
-        
-        -- Load the hub
-        task.wait(1)
-        
-        local success, result = pcall(function()
-            loadstring(game:HttpGet(Config.ScriptToLoad))()
-        end)
-        
-        if success then
-            loadingText.Text = "Hub loaded successfully!"
-            task.wait(1)
-            
-            -- Close the key system UI
-            closeUI()
-        else
-            showError("Failed to load hub: " .. tostring(result))
-            -- Reset UI
-            TweenService:Create(keyInputContainer, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
-            TweenService:Create(keyInput, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-            TweenService:Create(verifyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
-            TweenService:Create(getKeyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
-            
-            if loadingContainer then
-                loadingContainer:Destroy()
-            end
-        end
+        -- Load the main hub
+        loadMainHub()
     else
         showError("Invalid key! Please try again.")
     end
@@ -737,9 +720,11 @@ for _, elementData in ipairs(elements) do
     task.wait(0.05)
 end
 
--- Auto-focus on input
-task.wait(0.5)
-keyInput:CaptureFocus()
+-- Auto-focus on input if not already verified
+if not alreadyVerified then
+    task.wait(0.5)
+    keyInput:CaptureFocus()
+end
 
 -- Prevent UI from being destroyed when scripts load
 ScreenGui.Destroying:Connect(function()
