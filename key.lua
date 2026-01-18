@@ -23,7 +23,7 @@ local Config = {
     DISCORD_INVITE_CODE = "BPRtwyESNn",
     
     -- Key Storage
-    KEY_STORAGE_FILE = "Warp_KeyData.json",
+    KEY_STORAGE_FILE = "voidkey.json",
 
     -- Main Settings
     HubName = "Warp Hub Premium",
