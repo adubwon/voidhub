@@ -1,3 +1,11 @@
+--[[
+    Warp Hub - Key System Loader with Premium UI
+    Always shows verification UI
+]]
+
+--================================================================================--
+--[[ SERVICES ]]--
+--================================================================================--
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -16,10 +24,10 @@ local Config = {
     DISCORD_INVITE_CODE = "BPRtwyESNn",
     
     -- Key Storage
-    KEY_STORAGE_FILE = "voidkey.json",
+    KEY_STORAGE_FILE = "Warp_KeyData.json",
 
     -- Main Settings
-    HubName = "Void Hub",
+    HubName = "Warp Hub Premium",
     ScriptToLoad = "https://github.com/adubwon/nex/raw/refs/heads/main/hub.lua",
 
     -- UI Configuration
@@ -211,7 +219,7 @@ local windowWidth = 480
 local windowHeight = 480
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VoidHubKeySystem"
+ScreenGui.Name = "WarpHubKeySystem"
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.ResetOnSpawn = false
 
@@ -250,7 +258,7 @@ local logoContainer = createFrame(MainFrame, UDim2.new(0, 120, 0, 120),
 local logoLetter = Instance.new("TextLabel")
 logoLetter.Size = UDim2.new(1, 0, 1, 0)
 logoLetter.BackgroundTransparency = 1
-logoLetter.Text = "V"
+logoLetter.Text = "W"
 logoLetter.TextColor3 = Config.AccentColor
 logoLetter.TextSize = 64
 logoLetter.Font = Enum.Font.GothamBlack
@@ -724,3 +732,6 @@ ScreenGui.Destroying:Connect(function()
         blur:Destroy()
     end
 end)
+
+-- Return success
+return true
