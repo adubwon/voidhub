@@ -1,9 +1,5 @@
 --[[
-	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
-]]
---[[
-    SoujaHub - Loader Script v1.4 (WITH KEY SYSTEM)
-
+    Warp Hub - Key System Loader with Premium UI
 ]]
 
 --================================================================================--
@@ -14,6 +10,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 --================================================================================--
 --[[ CONFIGURATION ]]--
@@ -25,67 +23,31 @@ local Config = {
     DISCORD_INVITE_CODE = "BPRtwyESNn",
     
     -- Key Storage
-    KEY_STORAGE_FILE = "voidkey.json",
+    KEY_STORAGE_FILE = "Warp_KeyData.json",
 
     -- Main Settings
-    HubName = "Void Hub",
-    Subtitle = "Top Script Hub",
-    LogoLetter = "V",
-    ImageLogo = "", -- Paste your decal ID here. Leave blank for letter.
-    LoadTime = 8,
-
-    -- Main script to load after the animation finishes
+    HubName = "Warp Hub Premium",
     ScriptToLoad = "https://github.com/adubwon/nex/raw/refs/heads/main/hub.lua",
 
-    -- Loading Messages & Tips displayed randomly
-    Messages = {
-        "Connecting...",
-        "Authenticating...",
-        "Downloading assets...",
-        "Configuring environment...",
-        "Building interface...",
-        "Finalizing..."
-    },
-    Tips = {
-        "Did you know? You can customize the settings in the hub.",
-        "Check out our community for support and updates!",
-        "New features are added regularly!"
-    },
-
-    -- Sound Effects
-    Sounds = {
-        Open = "rbxassetid/913363037",
-        Update = "rbxassetid/6823769213",
-        Success = "rbxassetid/10895847421",
-        Failure = "rbxassetid/142642633",
-        TipPing = "rbxassetid/5151558373"
-    },
-
-    -- Animation Timings
-    IntroAnimationTime = 0.6,
-    OutroAnimationTime = 0.5,
-
-    -- Theme & Colors
-    Theme = {
-        Primary = Color3.fromRGB(170, 70, 255),
-        Background = Color3.fromRGB(20, 20, 30),
-        BackgroundGradient = Color3.fromRGB(35, 35, 50),
-        Text = Color3.fromRGB(255, 255, 255),
-        MutedText = Color3.fromRGB(120, 125, 135),
-        ProgressBackground = Color3.fromRGB(30, 32, 38),
-        Failure = Color3.fromRGB(255, 80, 80),
-        SuccessFlash = Color3.fromRGB(255, 255, 255),
-        InputBackground = Color3.fromRGB(25, 25, 35),
-        InputBorder = Color3.fromRGB(60, 60, 80),
-        ButtonSecondary = Color3.fromRGB(40, 40, 60)
-    },
-
-    -- Fonts
-    Fonts = {
-        Main = Enum.Font.GothamBold,
-        Secondary = Enum.Font.Gotham,
-        Code = Enum.Font.Code
-    }
+    -- UI Configuration
+    GlassTransparency = 0.15,
+    DarkGlassTransparency = 0.1,
+    CornerRadius = 20,
+    AccentColor = Color3.fromRGB(168, 128, 255),
+    SecondaryColor = Color3.fromRGB(128, 96, 255),
+    GlassColor = Color3.fromRGB(25, 25, 35),
+    DarkGlassColor = Color3.fromRGB(15, 15, 22),
+    TextColor = Color3.fromRGB(255, 255, 255),
+    SubTextColor = Color3.fromRGB(200, 200, 220),
+    ButtonColor = Color3.fromRGB(35, 35, 45),
+    ButtonHoverColor = Color3.fromRGB(168, 128, 255),
+    InputBackground = Color3.fromRGB(40, 40, 50),
+    SliderTrack = Color3.fromRGB(45, 45, 55),
+    SliderFill = Color3.fromRGB(168, 128, 255),
+    DropdownBackground = Color3.fromRGB(40, 40, 50),
+    DropdownHover = Color3.fromRGB(50, 50, 60),
+    ErrorColor = Color3.fromRGB(255, 85, 85),
+    SuccessColor = Color3.fromRGB(85, 255, 127)
 }
 
 --================================================================================--
@@ -156,10 +118,8 @@ local function handleDiscordInvite()
 end
 
 --================================================================================--
---[[ SCRIPT SETUP ]]--
+--[[ CHECK IF KEY IS ALREADY VERIFIED ]]--
 --================================================================================--
-
--- Check if key is already verified
 if loadKeyData() then
     -- Key is verified, load the hub directly
     local success, result = pcall(function()
@@ -173,391 +133,617 @@ if loadKeyData() then
     return
 end
 
--- Create a sound player utility
-local SoundPlayer = {}
-for name, id in pairs(Config.Sounds) do
-    if id and id ~= "" then
-        local sound = Instance.new("Sound")
-        sound.SoundId = id
-        sound.Parent = SoundService
-        SoundPlayer[name] = sound
+--================================================================================--
+--[[ PREMIUM UI FUNCTIONS ]]--
+--================================================================================--
+local function createFrame(parent, size, position, transparency, color, cornerRadius)
+    local frame = Instance.new("Frame")
+    frame.Size = size
+    frame.Position = position
+    frame.BackgroundColor3 = color or Config.GlassColor
+    frame.BackgroundTransparency = transparency or Config.GlassTransparency
+    frame.BorderSizePixel = 0
+    frame.ClipsDescendants = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, cornerRadius or Config.CornerRadius)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Config.GlassColor
+    stroke.Thickness = 1.5
+    stroke.Transparency = 0.6
+    stroke.Parent = frame
+
+    if parent then
+        frame.Parent = parent
     end
-end
-local function PlaySound(name)
-    if SoundPlayer[name] then
-        SoundPlayer[name]:Play()
-    end
+    
+    return frame
 end
 
--- Get Player and PlayerGui
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local function createNotification(title, message, notificationType, duration)
+    local duration = duration or 2.5
+    local notificationGUI = Instance.new("ScreenGui")
+    notificationGUI.Name = "WarpHubKeyNotification_" .. HttpService:GenerateGUID(false)
+    notificationGUI.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    notificationGUI.ResetOnSpawn = false
+    
+    local padding = 12
+    local notificationWidth = 320
+    local titleHeight = 24
+    local messageHeight = 36
+    local totalHeight = titleHeight + messageHeight + padding
 
--- Add a blur effect to the world behind the UI
+    local mainFrame = createFrame(nil, UDim2.new(0, notificationWidth, 0, totalHeight), 
+        UDim2.new(1, -notificationWidth - 20, 1, totalHeight), 
+        0.05, Config.DarkGlassColor, 12)
+    
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -padding * 2, 0, titleHeight)
+    titleLabel.Position = UDim2.new(0, padding, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title or "Notification"
+    titleLabel.TextColor3 = Config.AccentColor
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(1, -padding * 2, 0, messageHeight)
+    messageLabel.Position = UDim2.new(0, padding, 0, titleHeight)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = message or ""
+    messageLabel.TextColor3 = Config.TextColor
+    messageLabel.TextSize = 14
+    messageLabel.Font = Enum.Font.GothamMedium
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+    messageLabel.TextWrapped = true
+    
+    titleLabel.Parent = mainFrame
+    messageLabel.Parent = mainFrame
+    mainFrame.Parent = notificationGUI
+    notificationGUI.Parent = CoreGui
+    
+    local targetY = 80
+    
+    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -notificationWidth - 20, 0, targetY)
+    }):Play()
+    
+    task.delay(duration, function()
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Position = UDim2.new(1, -notificationWidth - 20, 1, totalHeight)
+        }):Play()
+        
+        task.wait(0.3)
+        if notificationGUI and notificationGUI.Parent then
+            notificationGUI:Destroy()
+        end
+    end)
+    
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            TweenService:Create(mainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                Position = UDim2.new(1, -notificationWidth - 20, 1, totalHeight)
+            }):Play()
+            
+            task.wait(0.2)
+            if notificationGUI and notificationGUI.Parent then
+                notificationGUI:Destroy()
+            end
+        end
+    end)
+end
+
+--================================================================================--
+--[[ CREATE KEY SYSTEM UI ]]--
+--================================================================================--
+local windowWidth = 480
+local windowHeight = 480
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "WarpHubKeySystem"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = createFrame(nil, UDim2.new(0, windowWidth, 0, windowHeight), 
+    UDim2.new(0.5, -windowWidth/2, 0.5, -windowHeight/2), 
+    Config.DarkGlassTransparency, Config.DarkGlassColor, 22)
+
+-- Top Bar
+local topBarHeight = 55
+local TopBar = createFrame(MainFrame, UDim2.new(1, -24, 0, topBarHeight), 
+    UDim2.new(0, 12, 0, 12), 0.1, Config.GlassColor, 14)
+
+local windowTitle = Instance.new("TextLabel")
+windowTitle.Size = UDim2.new(1, -16, 1, 0)
+windowTitle.Position = UDim2.new(0, 16, 0, 0)
+windowTitle.BackgroundTransparency = 1
+windowTitle.Text = Config.HubName
+windowTitle.TextColor3 = Config.TextColor
+windowTitle.TextSize = 26
+windowTitle.Font = Enum.Font.GothamBlack
+windowTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local titleGlow = Instance.new("UIGradient")
+titleGlow.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Config.AccentColor),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Config.SecondaryColor)
+})
+titleGlow.Parent = windowTitle
+windowTitle.Parent = TopBar
+
+-- Logo/Icon
+local logoContainer = createFrame(MainFrame, UDim2.new(0, 120, 0, 120), 
+    UDim2.new(0.5, -60, 0, topBarHeight + 40), 0.1, Config.GlassColor, 20)
+
+local logoLetter = Instance.new("TextLabel")
+logoLetter.Size = UDim2.new(1, 0, 1, 0)
+logoLetter.BackgroundTransparency = 1
+logoLetter.Text = "W"
+logoLetter.TextColor3 = Config.AccentColor
+logoLetter.TextSize = 64
+logoLetter.Font = Enum.Font.GothamBlack
+logoLetter.TextTransparency = 0
+logoLetter.Parent = logoContainer
+
+local logoGlow = Instance.new("UIGradient")
+logoGlow.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Config.AccentColor),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Config.SecondaryColor)
+})
+logoGlow.Parent = logoLetter
+
+-- Status Text
+local statusText = Instance.new("TextLabel")
+statusText.Size = UDim2.new(1, -40, 0, 30)
+statusText.Position = UDim2.new(0, 20, 0, topBarHeight + 180)
+statusText.BackgroundTransparency = 1
+statusText.Text = "Enter your key to access premium features"
+statusText.TextColor3 = Config.SubTextColor
+statusText.TextSize = 16
+statusText.Font = Enum.Font.GothamMedium
+statusText.TextXAlignment = Enum.TextXAlignment.Center
+statusText.Parent = MainFrame
+
+-- Key Input Box
+local keyInputContainer = createFrame(MainFrame, UDim2.new(1, -60, 0, 52), 
+    UDim2.new(0, 30, 0, topBarHeight + 220), 0.1, Config.InputBackground, 14)
+
+local keyInput = Instance.new("TextBox")
+keyInput.Size = UDim2.new(1, -20, 1, 0)
+keyInput.Position = UDim2.new(0, 10, 0, 0)
+keyInput.BackgroundTransparency = 1
+keyInput.PlaceholderText = "Enter your premium key..."
+keyInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 140)
+keyInput.TextColor3 = Config.TextColor
+keyInput.TextSize = 16
+keyInput.Font = Enum.Font.GothamMedium
+keyInput.ClearTextOnFocus = false
+keyInput.Text = ""
+keyInput.Parent = keyInputContainer
+
+-- Buttons
+local buttonContainer = Instance.new("Frame")
+buttonContainer.Size = UDim2.new(1, -60, 0, 52)
+buttonContainer.Position = UDim2.new(0, 30, 0, topBarHeight + 290)
+buttonContainer.BackgroundTransparency = 1
+buttonContainer.Parent = MainFrame
+
+local buttonList = Instance.new("UIListLayout")
+buttonList.Padding = UDim.new(0, 12)
+buttonList.FillDirection = Enum.FillDirection.Horizontal
+buttonList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+buttonList.SortOrder = Enum.SortOrder.LayoutOrder
+buttonList.Parent = buttonContainer
+
+local verifyButton = Instance.new("TextButton")
+verifyButton.Size = UDim2.new(0.5, -6, 1, 0)
+verifyButton.BackgroundColor3 = Config.AccentColor
+verifyButton.BackgroundTransparency = 0.2
+verifyButton.AutoButtonColor = false
+verifyButton.Text = "VERIFY KEY"
+verifyButton.TextColor3 = Config.TextColor
+verifyButton.TextSize = 16
+verifyButton.Font = Enum.Font.GothamBold
+verifyButton.BorderSizePixel = 0
+verifyButton.LayoutOrder = 1
+
+local verifyCorner = Instance.new("UICorner")
+verifyCorner.CornerRadius = UDim.new(0, 12)
+verifyCorner.Parent = verifyButton
+
+local getKeyButton = Instance.new("TextButton")
+getKeyButton.Size = UDim2.new(0.5, -6, 1, 0)
+getKeyButton.BackgroundColor3 = Config.ButtonColor
+getKeyButton.BackgroundTransparency = 0.2
+getKeyButton.AutoButtonColor = false
+getKeyButton.Text = "GET KEY"
+getKeyButton.TextColor3 = Config.TextColor
+getKeyButton.TextSize = 16
+getKeyButton.Font = Enum.Font.GothamMedium
+getKeyButton.BorderSizePixel = 0
+getKeyButton.LayoutOrder = 2
+
+local getKeyCorner = Instance.new("UICorner")
+getKeyCorner.CornerRadius = UDim.new(0, 12)
+getKeyCorner.Parent = getKeyButton
+
+verifyButton.Parent = buttonContainer
+getKeyButton.Parent = buttonContainer
+
+-- Footer Text
+local footerText = Instance.new("TextLabel")
+footerText.Size = UDim2.new(1, -40, 0, 40)
+footerText.Position = UDim2.new(0, 20, 1, -50)
+footerText.BackgroundTransparency = 1
+footerText.Text = "Join our Discord for keys and updates"
+footerText.TextColor3 = Config.SubTextColor
+footerText.TextSize = 14
+footerText.Font = Enum.Font.Gotham
+footerText.TextXAlignment = Enum.TextXAlignment.Center
+footerText.Parent = MainFrame
+
+-- Close Button
+local CloseButton = Instance.new("ImageButton")
+CloseButton.Size = UDim2.new(0, 28, 0, 28)
+CloseButton.Position = UDim2.new(1, -46, 0, 14)
+CloseButton.BackgroundTransparency = 1
+CloseButton.Image = "rbxassetid://3926305904"
+CloseButton.ImageRectOffset = Vector2.new(284, 4)
+CloseButton.ImageRectSize = Vector2.new(24, 24)
+CloseButton.ImageColor3 = Config.TextColor
+CloseButton.Parent = TopBar
+
+-- Add blur effect
 local blur = Instance.new("BlurEffect", game:GetService("Lighting"))
 blur.Size = 0
 blur.Enabled = true
 
--- Create the main ScreenGui container
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "SoujaHubLoader"
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-screenGui.DisplayOrder = 999
+-- Add to CoreGui
+MainFrame.Parent = ScreenGui
+ScreenGui.Parent = CoreGui
 
 --================================================================================--
---[[ UI ELEMENT CREATION ]]--
+--[[ UI INTERACTIONS ]]--
 --================================================================================--
+local isClosing = false
+local dragging = false
+local dragStart = Vector2.new(0, 0)
+local startPos = UDim2.new(0, 0, 0, 0)
 
--- Main container frame for the loader
-local container = Instance.new("Frame")
-container.Name = "Container"
-container.AnchorPoint = Vector2.new(0.5, 0.5)
-container.Size = UDim2.new(0, 0, 0, 0)
-container.Position = UDim2.new(0.5, 0, 0.5, 0)
-container.BackgroundColor3 = Config.Theme.Background
-container.BorderSizePixel = 0
-container.Parent = screenGui
-
-Instance.new("UICorner", container).CornerRadius = UDim.new(0, 20)
-
-local containerGradient = Instance.new("UIGradient", container)
-containerGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Config.Theme.Background),
-    ColorSequenceKeypoint.new(1, Config.Theme.BackgroundGradient)
-}
-containerGradient.Rotation = 90
-
-local borderStroke = Instance.new("UIStroke", container)
-borderStroke.Color = Config.Theme.Primary
-borderStroke.Thickness = 3
-borderStroke.Transparency = 0.2
-borderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
--- Logo elements
-local logoCircle = Instance.new("Frame", container)
-logoCircle.Name = "Logo"
-logoCircle.AnchorPoint = Vector2.new(0.5, 0)
-logoCircle.Size = UDim2.new(0, 70, 0, 70)
-logoCircle.Position = UDim2.new(0.5, 0, 0, 25)
-logoCircle.BackgroundColor3 = Config.Theme.Primary
-logoCircle.BorderSizePixel = 0
-logoCircle.ClipsDescendants = true
-Instance.new("UICorner", logoCircle).CornerRadius = UDim.new(0, 15)
-
-local logoInner = Instance.new("Frame", logoCircle)
-logoInner.AnchorPoint = Vector2.new(0.5, 0.5)
-logoInner.Size = UDim2.new(0, 58, 0, 58)
-logoInner.Position = UDim2.new(0.5, 0, 0.5, 0)
-logoInner.BackgroundColor3 = Config.Theme.Background
-logoInner.BorderSizePixel = 0
-Instance.new("UICorner", logoInner).CornerRadius = UDim.new(0, 12)
-
-if Config.ImageLogo and Config.ImageLogo ~= "" then
-    local logoImage = Instance.new("ImageLabel", logoInner)
-    logoImage.Size = UDim2.new(1, 0, 1, 0)
-    logoImage.BackgroundTransparency = 1
-    logoImage.Image = Config.ImageLogo
-else
-    local logoText = Instance.new("TextLabel", logoInner)
-    logoText.Size = UDim2.new(1, 0, 1, 0)
-    logoText.BackgroundTransparency = 1
-    logoText.Text = Config.LogoLetter
-    logoText.TextColor3 = Config.Theme.Primary
-    logoText.TextSize = 36
-    logoText.Font = Config.Fonts.Main
+local function closeUI()
+    if isClosing then return end
+    isClosing = true
+    
+    TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
+    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    task.wait(0.3)
+    if ScreenGui then
+        ScreenGui:Destroy()
+    end
+    blur:Destroy()
 end
 
--- Text elements
-local title = Instance.new("TextLabel", container)
-title.Size = UDim2.new(1, -40, 0, 35)
-title.Position = UDim2.new(0, 20, 0, 105)
-title.BackgroundTransparency = 1
-title.Text = Config.HubName
-title.TextColor3 = Config.Theme.Text
-title.TextSize = 28
-title.Font = Config.Fonts.Main
-title.TextXAlignment = Enum.TextXAlignment.Center
+local function handleDragInput(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+    end
+end
 
-local versionText = Instance.new("TextLabel", container)
-versionText.Size = UDim2.new(1, -40, 0, 18)
-versionText.Position = UDim2.new(0, 20, 0, 140)
-versionText.BackgroundTransparency = 1
-versionText.Text = Config.Subtitle
-versionText.TextColor3 = Config.Theme.MutedText
-versionText.TextSize = 13
-versionText.Font = Config.Fonts.Secondary
-versionText.TextXAlignment = Enum.TextXAlignment.Center
+TopBar.InputBegan:Connect(handleDragInput)
 
--- Key Input Box
-local keyInputFrame = Instance.new("Frame", container)
-keyInputFrame.Size = UDim2.new(1, -60, 0, 45)
-keyInputFrame.Position = UDim2.new(0, 30, 0, 170)
-keyInputFrame.BackgroundColor3 = Config.Theme.InputBackground
-keyInputFrame.BorderSizePixel = 0
-Instance.new("UICorner", keyInputFrame).CornerRadius = UDim.new(0, 10)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
 
-local inputStroke = Instance.new("UIStroke", keyInputFrame)
-inputStroke.Color = Config.Theme.InputBorder
-inputStroke.Thickness = 2
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
 
-local keyBox = Instance.new("TextBox", keyInputFrame)
-keyBox.Size = UDim2.new(1, -20, 1, 0)
-keyBox.Position = UDim2.new(0, 10, 0, 0)
-keyBox.PlaceholderText = "Enter key..."
-keyBox.PlaceholderColor3 = Config.Theme.MutedText
-keyBox.TextColor3 = Config.Theme.Text
-keyBox.BackgroundTransparency = 1
-keyBox.Font = Config.Fonts.Secondary
-keyBox.TextSize = 16
-keyBox.ClearTextOnFocus = false
+CloseButton.MouseButton1Click:Connect(closeUI)
 
--- Buttons
-local submitButton = Instance.new("TextButton", container)
-submitButton.Size = UDim2.new(1, -60, 0, 45)
-submitButton.Position = UDim2.new(0, 30, 0, 225)
-submitButton.Text = "VERIFY KEY"
-submitButton.Font = Config.Fonts.Main
-submitButton.TextSize = 16
-submitButton.TextColor3 = Config.Theme.Text
-submitButton.BackgroundColor3 = Config.Theme.Primary
-submitButton.BorderSizePixel = 0
-Instance.new("UICorner", submitButton).CornerRadius = UDim.new(0, 10)
+-- Button hover effects
+verifyButton.MouseEnter:Connect(function()
+    if isClosing then return end
+    TweenService:Create(verifyButton, TweenInfo.new(0.15), {
+        BackgroundTransparency = 0.1,
+        BackgroundColor3 = Config.ButtonHoverColor,
+        Size = UDim2.new(0.5, -2, 1.05, 0)
+    }):Play()
+end)
 
-local getKeyButton = Instance.new("TextButton", container)
-getKeyButton.Size = UDim2.new(1, -60, 0, 40)
-getKeyButton.Position = UDim2.new(0, 30, 0, 280)
-getKeyButton.Text = "GET KEY"
-getKeyButton.Font = Config.Fonts.Secondary
-getKeyButton.TextSize = 14
-getKeyButton.TextColor3 = Config.Theme.Text
-getKeyButton.BackgroundColor3 = Config.Theme.ButtonSecondary
-getKeyButton.BorderSizePixel = 0
-Instance.new("UICorner", getKeyButton).CornerRadius = UDim.new(0, 8)
+verifyButton.MouseLeave:Connect(function()
+    if isClosing then return end
+    TweenService:Create(verifyButton, TweenInfo.new(0.15), {
+        BackgroundTransparency = 0.2,
+        BackgroundColor3 = Config.AccentColor,
+        Size = UDim2.new(0.5, -6, 1, 0)
+    }):Play()
+end)
 
--- Status text
-local statusText = Instance.new("TextLabel", container)
-statusText.Size = UDim2.new(1, -40, 0, 20)
-statusText.Position = UDim2.new(0, 20, 0, 335)
-statusText.BackgroundTransparency = 1
-statusText.Text = "Enter your key to access the hub"
-statusText.TextColor3 = Config.Theme.MutedText
-statusText.TextSize = 12
-statusText.Font = Config.Fonts.Code
-statusText.TextXAlignment = Enum.TextXAlignment.Center
+getKeyButton.MouseEnter:Connect(function()
+    if isClosing then return end
+    TweenService:Create(getKeyButton, TweenInfo.new(0.15), {
+        BackgroundTransparency = 0.1,
+        BackgroundColor3 = Config.ButtonHoverColor,
+        Size = UDim2.new(0.5, -2, 1.05, 0)
+    }):Play()
+end)
 
--- Finally, parent the main GUI to the PlayerGui
-screenGui.Parent = playerGui
+getKeyButton.MouseLeave:Connect(function()
+    if isClosing then return end
+    TweenService:Create(getKeyButton, TweenInfo.new(0.15), {
+        BackgroundTransparency = 0.2,
+        BackgroundColor3 = Config.ButtonColor,
+        Size = UDim2.new(0.5, -6, 1, 0)
+    }):Play()
+end)
+
+CloseButton.MouseEnter:Connect(function()
+    if isClosing then return end
+    TweenService:Create(CloseButton, TweenInfo.new(0.15), {
+        ImageColor3 = Config.ErrorColor,
+        Size = UDim2.new(0, 32, 0, 32)
+    }):Play()
+end)
+
+CloseButton.MouseLeave:Connect(function()
+    if isClosing then return end
+    TweenService:Create(CloseButton, TweenInfo.new(0.15), {
+        ImageColor3 = Config.TextColor,
+        Size = UDim2.new(0, 28, 0, 28)
+    }):Play()
+end)
+
+logoContainer.MouseEnter:Connect(function()
+    if isClosing then return end
+    TweenService:Create(logoContainer, TweenInfo.new(0.2), {
+        Size = UDim2.new(0, 130, 0, 130),
+        Position = UDim2.new(0.5, -65, 0, topBarHeight + 35)
+    }):Play()
+    TweenService:Create(logoLetter, TweenInfo.new(0.2), {
+        TextSize = 70
+    }):Play()
+end)
+
+logoContainer.MouseLeave:Connect(function()
+    if isClosing then return end
+    TweenService:Create(logoContainer, TweenInfo.new(0.2), {
+        Size = UDim2.new(0, 120, 0, 120),
+        Position = UDim2.new(0.5, -60, 0, topBarHeight + 40)
+    }):Play()
+    TweenService:Create(logoLetter, TweenInfo.new(0.2), {
+        TextSize = 64
+    }):Play()
+end)
 
 --================================================================================--
---[[ CORE FUNCTIONS & ANIMATIONS ]]--
+--[[ KEY VERIFICATION LOGIC ]]--
 --================================================================================--
-
-local function updateStatus(text, instant)
-    if instant then statusText.Text = text; return end
-
-    PlaySound("Update")
-    local outTween = TweenService:Create(statusText, TweenInfo.new(0.15), {TextTransparency = 1})
-    outTween:Play()
-    outTween.Completed:Wait()
+local function updateStatus(text, isError)
     statusText.Text = text
-    local inTween = TweenService:Create(statusText, TweenInfo.new(0.15), {TextTransparency = 0})
-    inTween:Play()
+    if isError then
+        TweenService:Create(statusText, TweenInfo.new(0.15), {
+            TextColor3 = Config.ErrorColor
+        }):Play()
+    else
+        TweenService:Create(statusText, TweenInfo.new(0.15), {
+            TextColor3 = Config.SuccessColor
+        }):Play()
+    end
 end
 
-local function displayFatalError(errorMessage)
-    updateStatus(errorMessage, true)
-    PlaySound("Failure")
+local function showError(message)
+    updateStatus(message, true)
+    createNotification("Key Error", message, "error", 3)
     
-    TweenService:Create(borderStroke, TweenInfo.new(0.3), {Color = Config.Theme.Failure}):Play()
+    -- Shake animation
+    local originalPos = keyInputContainer.Position
+    for i = 1, 3 do
+        TweenService:Create(keyInputContainer, TweenInfo.new(0.05), {
+            Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset + 5, originalPos.Y.Scale, originalPos.Y.Offset)
+        }):Play()
+        task.wait(0.05)
+        TweenService:Create(keyInputContainer, TweenInfo.new(0.05), {
+            Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset - 5, originalPos.Y.Scale, originalPos.Y.Offset)
+        }):Play()
+        task.wait(0.05)
+    end
+    TweenService:Create(keyInputContainer, TweenInfo.new(0.1), {Position = originalPos}):Play()
 end
 
---================================================================================--
---[[ BUTTON FUNCTIONS ]]--
---================================================================================--
+local function showSuccess(message)
+    updateStatus(message, false)
+    createNotification("Success", message, "success", 3)
+end
 
-submitButton.MouseButton1Click:Connect(function()
-    PlaySound("Update")
+local function startLoadingAnimation()
+    -- Hide input elements
+    TweenService:Create(keyInputContainer, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(keyInput, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(verifyButton, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+    TweenService:Create(getKeyButton, TweenInfo.new(0.3), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
     
-    if keyBox.Text == Config.CORRECT_KEY then
+    -- Create loading bar
+    local loadingContainer = createFrame(MainFrame, UDim2.new(1, -60, 0, 8), 
+        UDim2.new(0, 30, 0, topBarHeight + 280), 0.2, Config.SliderTrack, 4)
+    loadingContainer.BackgroundTransparency = 0.8
+    
+    local loadingFill = createFrame(loadingContainer, UDim2.new(0, 0, 1, 0), 
+        UDim2.new(0, 0, 0, 0), 0, Config.SuccessColor, 4)
+    loadingFill.BackgroundTransparency = 0
+    
+    local loadingText = Instance.new("TextLabel")
+    loadingText.Size = UDim2.new(1, 0, 0, 30)
+    loadingText.Position = UDim2.new(0, 0, 0, 15)
+    loadingText.BackgroundTransparency = 1
+    loadingText.Text = "Loading hub... 0%"
+    loadingText.TextColor3 = Config.SuccessColor
+    loadingText.TextSize = 16
+    loadingText.Font = Enum.Font.GothamMedium
+    loadingText.TextXAlignment = Enum.TextXAlignment.Center
+    loadingText.Parent = loadingContainer
+    
+    -- Animate loading
+    for i = 0, 100, 2 do
+        loadingFill.Size = UDim2.new(i/100, 0, 1, 0)
+        loadingText.Text = string.format("Loading hub... %d%%", i)
+        task.wait(0.03)
+    end
+    
+    return loadingContainer, loadingFill, loadingText
+end
+
+verifyButton.MouseButton1Click:Connect(function()
+    local key = keyInput.Text:gsub("%s+", "") -- Remove whitespace
+    
+    if key == "" then
+        showError("Please enter a key")
+        return
+    end
+    
+    if key == Config.CORRECT_KEY then
+        -- Save the key
         saveKeyData()
-        updateStatus("Key verified! Loading hub...", true)
-        
-        -- Hide the key input UI
-        TweenService:Create(keyInputFrame, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(submitButton, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(getKeyButton, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(keyBox, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-        TweenService:Create(inputStroke, TweenInfo.new(0.3), {Transparency = 1}):Play()
-        
-        -- Create loading elements
-        local progressBg = Instance.new("Frame", container)
-        progressBg.Name = "progressBg"
-        progressBg.Size = UDim2.new(1, -60, 0, 7)
-        progressBg.Position = UDim2.new(0, 30, 0, 175)
-        progressBg.BackgroundColor3 = Config.Theme.ProgressBackground
-        progressBg.BorderSizePixel = 0
-        progressBg.BackgroundTransparency = 1
-        Instance.new("UICorner", progressBg).CornerRadius = UDim.new(1, 0)
-
-        local progressFill = Instance.new("Frame", progressBg)
-        progressFill.Name = "progressFill"
-        progressFill.Size = UDim2.new(0, 0, 1, 0)
-        progressFill.BackgroundColor3 = Config.Theme.Primary
-        progressFill.BorderSizePixel = 0
-        progressFill.BackgroundTransparency = 1
-        Instance.new("UICorner", progressFill).CornerRadius = UDim.new(1, 0)
-
-        local percentText = Instance.new("TextLabel", container)
-        percentText.Size = UDim2.new(0, 100, 0, 28)
-        percentText.Position = UDim2.new(0.5, -50, 0, 192)
-        percentText.BackgroundTransparency = 1
-        percentText.Text = "0%"
-        percentText.TextColor3 = Config.Theme.Primary
-        percentText.TextSize = 20
-        percentText.Font = Config.Fonts.Main
-        percentText.TextTransparency = 1
-        
-        -- Fade in loading elements
-        TweenService:Create(progressBg, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(progressFill, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(percentText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        showSuccess("Key verified! Loading hub...")
         
         -- Start loading animation
-        task.wait(0.5)
-        PlaySound("Success")
+        local loadingContainer, loadingFill, loadingText = startLoadingAnimation()
         
-        -- Animate progress
-        for i = 0, 100, 5 do
-            progressFill.Size = UDim2.new(i/100, 0, 1, 0)
-            percentText.Text = i .. "%"
-            task.wait(0.05)
-        end
+        -- Load the hub
+        task.wait(1)
         
-        -- Load the actual hub
         local success, result = pcall(function()
             loadstring(game:HttpGet(Config.ScriptToLoad))()
         end)
         
         if success then
-            updateStatus("Hub loaded successfully!", true)
+            loadingText.Text = "Hub loaded successfully!"
             task.wait(1)
             
-            -- Fade out and destroy
-            TweenService:Create(blur, TweenInfo.new(0.5), {Size = 0}):Play()
-            local outroTween = TweenService:Create(container, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-                Size = UDim2.new(0, 0, 0, 0)
-            })
-            outroTween:Play()
-            
-            for _, child in ipairs(container:GetDescendants()) do
-                if child:IsA("TextLabel") then
-                    TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-                elseif child:IsA("Frame") then
-                    TweenService:Create(child, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-                elseif child:IsA("UIStroke") then
-                    TweenService:Create(child, TweenInfo.new(0.4), {Transparency = 1}):Play()
-                end
-            end
-            
-            outroTween.Completed:Wait()
-            screenGui:Destroy()
-            blur:Destroy()
+            -- Close the key system UI
+            closeUI()
         else
-            displayFatalError("Failed to load hub: " .. tostring(result))
+            showError("Failed to load hub: " .. tostring(result))
+            -- Reset UI
+            TweenService:Create(keyInputContainer, TweenInfo.new(0.3), {BackgroundTransparency = 0.1}):Play()
+            TweenService:Create(keyInput, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
+            TweenService:Create(verifyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
+            TweenService:Create(getKeyButton, TweenInfo.new(0.3), {BackgroundTransparency = 0.2, TextTransparency = 0}):Play()
+            
+            if loadingContainer then
+                loadingContainer:Destroy()
+            end
         end
     else
-        updateStatus("Invalid key! Try again.", true)
-        PlaySound("Failure")
-        
-        -- Shake animation for wrong key
-        local originalPos = keyInputFrame.Position
-        for i = 1, 3 do
-            TweenService:Create(keyInputFrame, TweenInfo.new(0.05), {Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset + 5, originalPos.Y.Scale, originalPos.Y.Offset)}):Play()
-            task.wait(0.05)
-            TweenService:Create(keyInputFrame, TweenInfo.new(0.05), {Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset - 5, originalPos.Y.Scale, originalPos.Y.Offset)}):Play()
-            task.wait(0.05)
-        end
-        TweenService:Create(keyInputFrame, TweenInfo.new(0.1), {Position = originalPos}):Play()
+        showError("Invalid key! Please try again.")
     end
 end)
 
 getKeyButton.MouseButton1Click:Connect(function()
-    PlaySound("Update")
-    updateStatus("Opening Discord...", true)
+    showSuccess("Opening Discord...")
     handleDiscordInvite()
 end)
 
--- Button hover effects
-submitButton.MouseEnter:Connect(function()
-    TweenService:Create(submitButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(190, 90, 255)}):Play()
-end)
-submitButton.MouseLeave:Connect(function()
-    TweenService:Create(submitButton, TweenInfo.new(0.2), {BackgroundColor3 = Config.Theme.Primary}):Play()
-end)
-
-getKeyButton.MouseEnter:Connect(function()
-    TweenService:Create(getKeyButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 80)}):Play()
-end)
-getKeyButton.MouseLeave:Connect(function()
-    TweenService:Create(getKeyButton, TweenInfo.new(0.2), {BackgroundColor3 = Config.Theme.ButtonSecondary}):Play()
+-- Allow Enter key to submit
+keyInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        verifyButton.MouseButton1Click:Fire()
+    end
 end)
 
 --================================================================================--
---[[ MAIN EXECUTION SEQUENCE ]]--
+--[[ INTRO ANIMATION ]]--
 --================================================================================--
+-- Initial transparent state
+MainFrame.Size = UDim2.new(0, 0, 0, 0)
+MainFrame.BackgroundTransparency = 1
+TopBar.BackgroundTransparency = 1
+logoContainer.BackgroundTransparency = 1
+logoLetter.TextTransparency = 1
+statusText.TextTransparency = 1
+keyInputContainer.BackgroundTransparency = 1
+keyInput.TextTransparency = 1
+keyInput.PlaceholderColor3 = Color3.fromRGB(0, 0, 0)
+verifyButton.BackgroundTransparency = 1
+verifyButton.TextTransparency = 1
+getKeyButton.BackgroundTransparency = 1
+getKeyButton.TextTransparency = 1
+footerText.TextTransparency = 1
+windowTitle.TextTransparency = 1
+CloseButton.ImageTransparency = 1
 
--- Step 1: Set all elements to be fully transparent for the fade-in animation
-for _, child in ipairs(container:GetDescendants()) do
-    if child:IsA("TextLabel") then
-        child.TextTransparency = 1
-    elseif child:IsA("ImageLabel") then
-        child.ImageTransparency = 1
-    elseif child:IsA("Frame") then
-        child.BackgroundTransparency = 1
-    elseif child:IsA("UIStroke") then
-        child.Transparency = 1
-    elseif child:IsA("TextBox") then
-        child.TextTransparency = 1
-        child.PlaceholderColor3 = Color3.fromRGB(0, 0, 0)
-    elseif child:IsA("TextButton") then
-        child.TextTransparency = 1
+-- Intro animation
+task.wait(0.5)
+TweenService:Create(blur, TweenInfo.new(0.5), {Size = 12}):Play()
+TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, windowWidth, 0, windowHeight),
+    BackgroundTransparency = Config.DarkGlassTransparency
+}):Play()
+
+task.wait(0.3)
+
+-- Fade in elements
+local elements = {
+    {TopBar, "BackgroundTransparency", 0.1},
+    {windowTitle, "TextTransparency", 0},
+    {CloseButton, "ImageTransparency", 0},
+    {logoContainer, "BackgroundTransparency", 0.1},
+    {logoLetter, "TextTransparency", 0},
+    {statusText, "TextTransparency", 0},
+    {keyInputContainer, "BackgroundTransparency", 0.1},
+    {keyInput, "TextTransparency", 0},
+    {keyInput, "PlaceholderColor3", Color3.fromRGB(120, 120, 140)},
+    {verifyButton, "BackgroundTransparency", 0.2},
+    {verifyButton, "TextTransparency", 0},
+    {getKeyButton, "BackgroundTransparency", 0.2},
+    {getKeyButton, "TextTransparency", 0},
+    {footerText, "TextTransparency", 0}
+}
+
+for _, elementData in ipairs(elements) do
+    local element = elementData[1]
+    local property = elementData[2]
+    local value = elementData[3]
+    
+    if element and element[property] then
+        TweenService:Create(element, TweenInfo.new(0.3), {
+            [property] = value
+        }):Play()
     end
+    task.wait(0.05)
 end
 
--- Step 2: Apply an interactive hover effect to the logo
-logoCircle.MouseEnter:Connect(function()
-    TweenService:Create(logoCircle, TweenInfo.new(0.2), {Size = UDim2.new(0, 75, 0, 75)}):Play()
-end)
-logoCircle.MouseLeave:Connect(function()
-    TweenService:Create(logoCircle, TweenInfo.new(0.2), {Size = UDim2.new(0, 70, 0, 70)}):Play()
-end)
+-- Auto-focus on input
+task.wait(0.5)
+keyInput:CaptureFocus()
 
--- Step 3: Run the intro animation
-PlaySound("Open")
-TweenService:Create(blur, TweenInfo.new(Config.IntroAnimationTime), {Size = 12}):Play()
-local introTween = TweenService:Create(container, TweenInfo.new(Config.IntroAnimationTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-    Size = UDim2.new(0, 420, 0, 360)  -- Increased height for key input
-})
-introTween:Play()
-introTween.Completed:Wait()
-
--- Step 4: Staggered fade-in for all child elements
-for _, child in ipairs(container:GetDescendants()) do
-    if child:IsA("TextLabel") then
-        TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-    elseif child:IsA("ImageLabel") then
-        TweenService:Create(child, TweenInfo.new(0.4), {ImageTransparency = 0}):Play()
-    elseif child:IsA("Frame") then
-        TweenService:Create(child, TweenInfo.new(0.4), {BackgroundTransparency = 0}):Play()
-    elseif child:IsA("UIStroke") then
-        local targetTransparency = (child == borderStroke) and 0.2 or 0
-        TweenService:Create(child, TweenInfo.new(0.4), {Transparency = targetTransparency}):Play()
-    elseif child:IsA("TextBox") then
-        TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
-        TweenService:Create(child, TweenInfo.new(0.4), {PlaceholderColor3 = Config.Theme.MutedText}):Play()
-    elseif child:IsA("TextButton") then
-        TweenService:Create(child, TweenInfo.new(0.4), {TextTransparency = 0}):Play()
+-- Prevent UI from being destroyed when scripts load
+ScreenGui.Destroying:Connect(function()
+    if blur and blur.Parent then
+        blur:Destroy()
     end
-    task.wait(0.02)
-end
+end)
