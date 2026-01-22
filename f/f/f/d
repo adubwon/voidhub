@@ -1,0 +1,59 @@
+gameMt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if (method == 'Raycast' and self == workspace) then
+        if (not checkcaller()) then
+            local args = {...}
+            local callingScript = getcallingscript()
+            if (callingScript) then
+                if (callingScript and not string.find(callingScript.Name, "Controller")) then
+                    if (not getgenv().LastOutputFunc or tick() - getgenv().LastOutputFunc >= 1.6) then
+                        if (callingScript.Name ~= "CameraController" and callingScript.Name ~= "CameraModule") then
+                            getgenv().debugmsg("Raycast called by: " .. tostring(callingScript.Name))
+                            getgenv().LastOutputFunc = tick()
+                        end
+                    end
+
+                    return original__namecall(self, ...)
+                end
+            end
+           
+            local target = getgenv().CurrentTarget
+            if not (getgenv().CanSilentAim) then
+                --getgenv().debugmsg("Silent Aim is disabled, returning original Raycast")
+                return original__namecall(self, ...)
+            end
+            
+            if not (target) then
+                --getgenv().debugmsg("No target found, returning original Raycast")
+                return original__namecall(self, ...)
+            end
+           
+            if (target and target.Position and args[1] and typeof(args[1]) == 'Vector3' and args[2] and typeof(args[2]) == 'Vector3') then
+                local targetPos = target.Position
+                if (targetPos and typeof(targetPos) == 'Vector3') then
+                    local originalMagnitude = args[2].Magnitude
+                    if (originalMagnitude and originalMagnitude > 0) then
+                        local direction = (targetPos - args[1])
+                        if (direction and direction.Magnitude > 0) then
+                            local newDirection = direction.Unit * originalMagnitude
+                            if (newDirection and typeof(newDirection) == 'Vector3') then
+                                args[2] = newDirection
+                            end
+                        end
+                    end
+                end
+            end
+           
+            --getgenv().debugmsg("Silent Aim Raycast called, modifying arguments")
+            if (not getgenv().LastOutputFunc2 or tick() - getgenv().LastOutputFunc2 >= 1.6) then
+                --getgenv().debugmsg("Silent Aim Raycast called, modifying arguments")
+                getgenv().LastOutputFunc2 = tick()
+            end
+            return original__namecall(self, unpack(args))
+        end
+    end
+
+    return original__namecall(self, ...)
+end)
+
+setreadonly(gameMt, true)
